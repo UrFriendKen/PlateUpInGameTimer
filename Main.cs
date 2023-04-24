@@ -1,9 +1,13 @@
 ﻿using Kitchen;
+using KitchenData;
 using KitchenLib;
 using KitchenLib.Event;
+using KitchenLib.References;
 using KitchenMods;
 using PreferenceSystem;
+using System.CodeDom;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 
 // Namespace should have "Kitchen" in the beginning
@@ -30,27 +34,28 @@ namespace KitchenInGameTimer
         public const bool DEBUG_MODE = false;
 #endif
 
+        public const string TIMER_ENABLED_ID = "Enabled";
+        public const string TIMER_MODE_ID = "TimerRunDuring";
+        public const string TIMER_RESET_MODE_ID = "AutomaticallyReset";
+        public const string TIMER_PAUSE_MODE_ID = "FreezeTimerWhenGamePaused";
+        public const string GROUPS_SERVED_ENABLED_ID = "GroupsServedEnabled";
+        public const string GROUPS_REMAINING_ENABLED_ID = "GroupsRemainingEnabled";
+
+
         internal static PreferenceSystemManager PrefManager { get; private set; }
-
-        internal static bool RequestStart = false;
-        internal static bool RequestPause = false;
         internal static bool RequestReset = false;
-
         internal bool IsHost => Session.CurrentGameNetworkMode == GameNetworkMode.Host;
+
+
 
         public Main() : base(MOD_GUID, MOD_NAME, MOD_AUTHOR, MOD_VERSION, MOD_GAMEVERSION, Assembly.GetExecutingAssembly()) { }
 
         protected override void OnInitialise()
         {
-            LogWarning($"{MOD_GUID} v{MOD_VERSION} in use!");
         }
 
         protected override void OnUpdate()
         {
-            try
-            {
-
-            } catch { }
         }
 
         protected override void OnPostActivate(KitchenMods.Mod mod)
@@ -64,40 +69,62 @@ namespace KitchenInGameTimer
                     RequestReset = IsHost;
                 })
                 .AddSpacer()
-                .AddSubmenu("Configuration", "configuration")
+                .AddSubmenu("Timer Configuration", "timerConfiguration")
                     .AddLabel("Timer Configuration")
                     .AddSpacer()
-                    .AddLabel("Use Custom Timer")
+                    .AddLabel("Show Timer")
                     .AddOption<bool>(
-                        "Enabled",
+                        TIMER_ENABLED_ID,
                         true,
                         new bool[] { false, true },
                         new string[] { "Disabled", "Enabled" })
                     .AddLabel("Progress")
                     .AddOption<string>(
-                        "TimerRunDuring",
+                        TIMER_MODE_ID,
                         "ALWAYS_RUN",
                         new string[] { "ALWAYS_RUN", "DURING_NIGHT", "DURING_DAY" },
                         new string[] { "Always Run", "During Prep and Practice", "During Day" })
                     .AddLabel("Automatically Reset")
                     .AddOption<string>(
-                        "AutomaticallyReset",
+                        TIMER_RESET_MODE_ID,
                         "NEVER",
                         new string[] { "NEVER", "END_OF_DAY", "START_OF_DAY", "START_AND_END" },
                         new string[] { "Never", "At End of Day", "At Start of Day", "Start and End of Day" })
                     .AddLabel("When Game Paused")
                     .AddOption<bool>(
-                        "FreezeTimerWhenGamePaused",
+                        TIMER_PAUSE_MODE_ID,
                         true,
                         new bool[] { true, false },
                         new string[] { "Pause Timer", "Continue Running" })
                     .AddSpacer()
                     .AddSpacer()
                 .SubmenuDone()
+                .AddSubmenu("Group Configuration", "groupConfiguration")
+                    .AddLabel("Group Configuration")
+                    .AddSpacer()
+                    .AddLabel("Show Served Groups")
+                    .AddOption<bool>(
+                        GROUPS_SERVED_ENABLED_ID,
+                        true,
+                        new bool[] { false, true },
+                        new string[] { "Disabled", "Enabled" })
+                    .AddLabel("Show Remaining Scheduled Groups")
+                    .AddInfo("Does not include additional groups spawned by certain mods.")
+                    .AddOption<bool>(
+                        GROUPS_REMAINING_ENABLED_ID,
+                        true,
+                        new bool[] { false, true },
+                        new string[] { "Disabled", "Enabled" })
+                .SubmenuDone()
                 .AddSpacer()
                 .AddSpacer();
 
             PrefManager.RegisterMenu(PreferenceSystemManager.MenuType.PauseMenu);
+
+
+            Events.BuildGameDataPostViewInitEvent += delegate (object s, BuildGameDataEventArgs args)
+            {
+            };
         }
 
         #region Logging

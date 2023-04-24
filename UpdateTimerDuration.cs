@@ -1,6 +1,4 @@
-﻿
-using Kitchen;
-using Unity.Collections;
+﻿using Kitchen;
 using Unity.Entities;
 
 namespace KitchenInGameTimer
@@ -42,15 +40,15 @@ namespace KitchenInGameTimer
 
             STimer timer = GetOrCreate<STimer>();
 
-            string runDuring = Main.PrefManager.Get<string>("TimerRunDuring");
+            string runDuring = Main.PrefManager.Get<string>(Main.TIMER_MODE_ID);
             timer.RunDay = runDuring == "ALWAYS_RUN" || runDuring == "DURING_DAY";
             timer.RunNight = runDuring == "ALWAYS_RUN" || runDuring == "DURING_NIGHT";
 
-            string autoReset = Main.PrefManager.Get<string>("AutomaticallyReset");
+            string autoReset = Main.PrefManager.Get<string>(Main.TIMER_RESET_MODE_ID);
             timer.ResetStartOfDay = autoReset == "START_AND_END" || autoReset == "START_OF_DAY";
             timer.ResetStartOfNight = autoReset == "START_AND_END" || autoReset == "END_OF_DAY";
 
-            timer.RunWhenPaused = !Main.PrefManager.Get<bool>("FreezeTimerWhenGamePaused");
+            timer.RunWhenPaused = !Main.PrefManager.Get<bool>(Main.TIMER_PAUSE_MODE_ID);
 
             if (Main.RequestReset)
             {
