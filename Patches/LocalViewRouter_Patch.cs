@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using Kitchen;
-using KitchenLib.Utils;
 using TMPro;
 using UnityEngine;
 
@@ -16,7 +15,7 @@ namespace KitchenInGameTimer.Patches
         [HarmonyPostfix]
         static void GetPrefab_Postfix(ref GameObject __result, ViewType view_type)
         {
-            if (view_type == ViewType.DayDisplay && !(__result?.HasComponent<InGameTimerView>() ?? true))
+            if (view_type == ViewType.DayDisplay && __result != null && __result.GetComponent<InGameTimerView>() == null)
             {
                 Transform containerTransform = __result.transform.Find("GameObject (1)");
                 if (containerTransform == null)

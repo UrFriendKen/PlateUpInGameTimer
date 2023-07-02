@@ -1,34 +1,19 @@
-﻿using Kitchen;
-using KitchenLib;
-using KitchenLib.Event;
+﻿using HarmonyLib;
+using Kitchen;
 using KitchenMods;
 using PreferenceSystem;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
 // Namespace should have "Kitchen" in the beginning
 namespace KitchenInGameTimer
 {
-    public class Main : BaseMod, IModSystem
+    public class Main : IModInitializer
     {
-        // GUID must be unique and is recommended to be in reverse domain name notation
-        // Mod Name is displayed to the player and listed in the mods menu
-        // Mod Version must follow semver notation e.g. "1.2.3"
         public const string MOD_GUID = "IcedMilo.PlateUp.InGameTimer";
         public const string MOD_NAME = "In-Game Timer";
-        public const string MOD_VERSION = "0.1.2";
-        public const string MOD_AUTHOR = "IcedMilo";
-        public const string MOD_GAMEVERSION = ">=1.1.5";
-        // Game version this mod is designed for in semver
-        // e.g. ">=1.1.3" current and all future
-        // e.g. ">=1.1.3 <=1.2.3" for all from/until
-
-        // Boolean constant whose value depends on whether you built with DEBUG or RELEASE mode, useful for testing
-#if DEBUG
-        public const bool DEBUG_MODE = true;
-#else
-        public const bool DEBUG_MODE = false;
-#endif
+        public const string MOD_VERSION = "0.1.3";
 
         public const string TIMER_ENABLED_ID = "Enabled";
         public const string TIMER_MODE_ID = "TimerRunDuring";
@@ -37,25 +22,29 @@ namespace KitchenInGameTimer
         public const string GROUPS_SERVED_ENABLED_ID = "GroupsServedEnabled";
         public const string GROUPS_REMAINING_ENABLED_ID = "GroupsRemainingEnabled";
 
-
         internal static PreferenceSystemManager PrefManager { get; private set; }
         internal static bool RequestReset = false;
         internal bool IsHost => Session.CurrentGameNetworkMode == GameNetworkMode.Host;
 
+        Harmony harmony;
+        static List<Assembly> PatchedAssemblies = new List<Assembly>();
 
-
-        public Main() : base(MOD_GUID, MOD_NAME, MOD_AUTHOR, MOD_VERSION, MOD_GAMEVERSION, Assembly.GetExecutingAssembly()) { }
-
-        protected override void OnInitialise()
+        public Main()
         {
+            if (harmony == null)
+                harmony = new Harmony(MOD_GUID);
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            if (assembly != null && !PatchedAssemblies.Contains(assembly))
+            {
+                harmony.PatchAll(assembly);
+                PatchedAssemblies.Add(assembly);
+            }
         }
 
-        protected override void OnUpdate()
+        public void PostActivate(KitchenMods.Mod mod)
         {
-        }
+            LogWarning($"{MOD_GUID} v{MOD_VERSION} in use!");
 
-        protected override void OnPostActivate(KitchenMods.Mod mod)
-        {
             PrefManager = new PreferenceSystemManager(MOD_GUID, MOD_NAME);
 
             PrefManager.AddLabel("In-Game Timer")
@@ -116,12 +105,11 @@ namespace KitchenInGameTimer
                 .AddSpacer();
 
             PrefManager.RegisterMenu(PreferenceSystemManager.MenuType.PauseMenu);
-
-
-            Events.BuildGameDataPostViewInitEvent += delegate (object s, BuildGameDataEventArgs args)
-            {
-            };
         }
+
+        public void PreInject() { }
+
+        public void PostInject() { }
 
         #region Logging
         public static void LogInfo(string _log) { Debug.Log($"[{MOD_NAME}] " + _log); }
