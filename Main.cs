@@ -13,13 +13,14 @@ namespace KitchenInGameTimer
     {
         public const string MOD_GUID = "IcedMilo.PlateUp.InGameTimer";
         public const string MOD_NAME = "In-Game Timer";
-        public const string MOD_VERSION = "0.1.3";
+        public const string MOD_VERSION = "0.1.4";
 
         public const string TIMER_ENABLED_ID = "Enabled";
         public const string TIMER_MODE_ID = "TimerRunDuring";
         public const string TIMER_RESET_MODE_ID = "AutomaticallyReset";
         public const string TIMER_PAUSE_MODE_ID = "FreezeTimerWhenGamePaused";
         public const string GROUPS_SERVED_ENABLED_ID = "GroupsServedEnabled";
+        public const string GROUPS_QUEUE_ENABLED_ID = "GroupsQueueEnabled";
         public const string GROUPS_REMAINING_ENABLED_ID = "GroupsRemainingEnabled";
 
         internal static PreferenceSystemManager PrefManager { get; private set; }
@@ -90,6 +91,12 @@ namespace KitchenInGameTimer
                     .AddLabel("Show Served Groups")
                     .AddOption<bool>(
                         GROUPS_SERVED_ENABLED_ID,
+                        true,
+                        new bool[] { false, true },
+                        new string[] { "Disabled", "Enabled" })
+                    .AddLabel("Show Queue Groups")
+                    .AddOption<bool>(
+                        GROUPS_QUEUE_ENABLED_ID,
                         true,
                         new bool[] { false, true },
                         new string[] { "Disabled", "Enabled" })

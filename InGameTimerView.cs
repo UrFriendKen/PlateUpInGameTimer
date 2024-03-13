@@ -14,6 +14,7 @@ namespace KitchenInGameTimer
         public class UpdateView : IncrementalViewSystemBase<ViewData>, IModSystem
         {
             private EntityQuery Views;
+            private EntityQuery QueuedGroups;
             private EntityQuery ScheduledGroups;
 
             protected override void Initialise()
@@ -22,6 +23,9 @@ namespace KitchenInGameTimer
 
                 Views = GetEntityQuery(new QueryHelper()
                     .All(typeof(CDayDisplay), typeof(CLinkedView)));
+
+                QueuedGroups = GetEntityQuery(new QueryHelper()
+                    .All(typeof(CCustomerGroup), typeof(CGroupPhaseQueue)));
 
                 ScheduledGroups = GetEntityQuery(new QueryHelper()
                     .All(typeof(CScheduledCustomer)));
@@ -33,6 +37,7 @@ namespace KitchenInGameTimer
 
                 TimeSpan duration = Require(out STimer timer) ? new TimeSpan((long)(timer.Seconds * 1E+07f)) : TimeSpan.Zero;
                 int servedGroups = Require(out SServedGroups sServedGroups)? sServedGroups.Count : 0;
+                int queuedGroups = QueuedGroups.CalculateEntityCount();
                 int scheduledGroups = ScheduledGroups.CalculateEntityCount();
 
                 for (var i = 0; i < views.Length; i++)
@@ -42,6 +47,7 @@ namespace KitchenInGameTimer
                     {
                         Duration = duration,
                         ScheduledGroups = scheduledGroups,
+                        QueueGroups = queuedGroups,
                         ServedGroups = servedGroups
                     });
                 }
@@ -53,7 +59,8 @@ namespace KitchenInGameTimer
         {
             [Key(0)] public TimeSpan Duration;
             [Key(1)] public int ServedGroups;
-            [Key(2)] public int ScheduledGroups;
+            [Key(2)] public int QueueGroups;
+            [Key(3)] public int ScheduledGroups;
 
             public IUpdatableObject GetRelevantSubview(IObjectView view) => view.GetSubView<InGameTimerView>();
 
@@ -65,7 +72,8 @@ namespace KitchenInGameTimer
 
         private TimeSpan duration;
         private int servedGroups;
-        private int remainingGroups;
+        private int queueGroups;
+        private int remainingSpawns;
 
         public TextMeshPro Timer;
         public TextMeshPro GroupsServed;
@@ -74,7 +82,8 @@ namespace KitchenInGameTimer
         {
             duration = data.Duration;
             servedGroups = data.ServedGroups;
-            remainingGroups = data.ScheduledGroups;
+            queueGroups = data.QueueGroups;
+            remainingSpawns = data.ScheduledGroups;
         }
 
         void Update()
@@ -91,8 +100,10 @@ namespace KitchenInGameTimer
                 List<string> texts = new List<string>();
                 if (Main.PrefManager.Get<bool>(Main.GROUPS_SERVED_ENABLED_ID))
                     texts.Add($"Served: {servedGroups}");
+                if (Main.PrefManager.Get<bool>(Main.GROUPS_QUEUE_ENABLED_ID))
+                    texts.Add($"Queue: {queueGroups}");
                 if (Main.PrefManager.Get<bool>(Main.GROUPS_REMAINING_ENABLED_ID))
-                    texts.Add($"Remaining: {remainingGroups}");
+                    texts.Add($"To Spawn: {remainingSpawns}");
                 GroupsServed.text = String.Join("\n", texts);
             }
         }
