@@ -25,7 +25,8 @@ namespace KitchenInGameTimer
 
         protected override void OnUpdate()
         {
-            NativeArray<Entity> entities = LeavingGroups.ToEntityArray(Allocator.Temp);
+            using NativeArray<Entity> entities = LeavingGroups.ToEntityArray(Allocator.Temp);
+
             SServedGroups servedGroups = GetOrCreate<SServedGroups>();
             if (Has<SIsNightTime>())
             {

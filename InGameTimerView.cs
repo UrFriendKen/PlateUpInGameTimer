@@ -1,11 +1,14 @@
 ﻿using Kitchen;
+using Kitchen.Modules;
+using KitchenInGameTimer.Modules;
 using KitchenMods;
 using MessagePack;
 using System;
 using System.Collections.Generic;
-using TMPro;
+using System.Linq;
 using Unity.Collections;
 using Unity.Entities;
+using UnityEngine;
 
 namespace KitchenInGameTimer
 {
@@ -22,7 +25,7 @@ namespace KitchenInGameTimer
                 base.Initialise();
 
                 Views = GetEntityQuery(new QueryHelper()
-                    .All(typeof(CDayDisplay), typeof(CLinkedView)));
+                    .All(typeof(SDisplay), typeof(CLinkedView)));
 
                 QueuedGroups = GetEntityQuery(new QueryHelper()
                     .All(typeof(CCustomerGroup), typeof(CGroupPhaseQueue)));
@@ -55,14 +58,12 @@ namespace KitchenInGameTimer
         }
 
         [MessagePackObject(false)]
-        public class ViewData : ISpecificViewData, IViewData.ICheckForChanges<ViewData>
+        public class ViewData : IViewData, IViewData.ICheckForChanges<ViewData>
         {
             [Key(0)] public TimeSpan Duration;
             [Key(1)] public int ServedGroups;
             [Key(2)] public int QueueGroups;
             [Key(3)] public int ScheduledGroups;
-
-            public IUpdatableObject GetRelevantSubview(IObjectView view) => view.GetSubView<InGameTimerView>();
 
             public bool IsChangedFrom(ViewData check) =>
                 Duration.GetHashCode() != check.Duration.GetHashCode() ||
@@ -70,42 +71,164 @@ namespace KitchenInGameTimer
                 ServedGroups != check.ServedGroups;
         }
 
-        private TimeSpan duration;
-        private int servedGroups;
-        private int queueGroups;
-        private int remainingSpawns;
+        private ViewData Data;
 
-        public TextMeshPro Timer;
-        public TextMeshPro GroupsServed;
+        public Transform Anchor;
+
+        private Transform Container;
+
+        private ModuleList ModuleList = new ModuleList();
+
+        private List<Row> Rows = new List<Row>();
+
+        public virtual ElementStyle Style { get; set; }
+
+        protected Vector2 DefaultElementSize = new Vector2(3f, 0.45f);
+
+        private class Row
+        {
+            private Func<string> _valueFunc;
+            private InfoLabelElement _infoLabel;
+
+            public InfoLabelElement InfoLabel => _infoLabel;
+
+            public string Value => _valueFunc == null ? string.Empty : _valueFunc();
+
+            public Row(InfoLabelElement infoLabel, Func<string> getValue)
+            {
+                _infoLabel = infoLabel;
+                _valueFunc = getValue;
+            }
+
+            public void SetTitle(string title)
+            {
+                _infoLabel.SetTitle(title);
+            }
+
+            public void Update()
+            {
+                _infoLabel?.SetValue(Value);
+            }
+        }
 
         protected override void UpdateData(ViewData data)
         {
-            duration = data.Duration;
-            servedGroups = data.ServedGroups;
-            queueGroups = data.QueueGroups;
-            remainingSpawns = data.ScheduledGroups;
+            Data = data;
         }
+
+        List<bool> _oldPrefStates = new List<bool>();
+        readonly List<string> _prefKeys = new List<string>()
+        {
+            Main.TIMER_ENABLED_ID,
+            Main.GROUPS_SERVED_ENABLED_ID,
+            Main.GROUPS_QUEUE_ENABLED_ID,
+            Main.GROUPS_REMAINING_ENABLED_ID
+        };
 
         void Update()
         {
-            if (Timer)
+            if (Data == null)
             {
-                string text = String.Empty;
-                if (Main.PrefManager.Get<bool>(Main.TIMER_ENABLED_ID))
-                    text = $"Time: {Math.Floor(duration.TotalHours):00}:{duration.Minutes:00}:{duration.Seconds:00}";
-                Timer.text = text;
+                Container?.gameObject.SetActive(false);
+                return;
             }
-            if (GroupsServed)
+
+            bool ShouldRefreshModules()
             {
-                List<string> texts = new List<string>();
-                if (Main.PrefManager.Get<bool>(Main.GROUPS_SERVED_ENABLED_ID))
-                    texts.Add($"Served: {servedGroups}");
-                if (Main.PrefManager.Get<bool>(Main.GROUPS_QUEUE_ENABLED_ID))
-                    texts.Add($"Queue: {queueGroups}");
-                if (Main.PrefManager.Get<bool>(Main.GROUPS_REMAINING_ENABLED_ID))
-                    texts.Add($"To Spawn: {remainingSpawns}");
-                GroupsServed.text = String.Join("\n", texts);
+                if (Container == null)
+                    return true;
+
+                List<bool> prefStates = _prefKeys.Select(Main.PrefManager.Get<bool>).ToList();
+                if (prefStates.Count != _oldPrefStates.Count)
+                {
+                    _oldPrefStates = prefStates;
+                    return true;
+                }
+
+                for (int i = 0; i < prefStates.Count; i++)
+                {
+                    if (prefStates[i] == _oldPrefStates[i])
+                        continue;
+                    _oldPrefStates = prefStates;
+                    return true;
+                }
+
+                return false;
             }
+
+            if (ShouldRefreshModules())
+            {
+                if (Container == null)
+                {
+                    Container = new GameObject("Container").transform;
+                    Container.SetParent(transform);
+                    Container.Reset();
+                    Container.localPosition = Anchor?.localPosition ?? Vector3.zero;
+                }
+
+                ModuleList.Clear();
+                Rows.Clear();
+
+                AddRowConditional("Time", Main.TIMER_ENABLED_ID, () =>
+                {
+                    TimeSpan duration = Data.Duration;
+                    return $"{Math.Floor(duration.TotalHours):00}:{duration.Minutes:00}:{duration.Seconds:00}";
+                });
+                AddRowConditional("Served", Main.GROUPS_SERVED_ENABLED_ID, Data.ServedGroups.ToString);
+                AddRowConditional("Queue", Main.GROUPS_QUEUE_ENABLED_ID, Data.QueueGroups.ToString);
+                AddRowConditional("To Spawn", Main.GROUPS_REMAINING_ENABLED_ID, Data.ScheduledGroups.ToString);
+            }
+
+            foreach (Row row in Rows)
+            {
+                row.Update();
+            }
+        }
+
+        Row AddRow(string title, Func<string> getValue)
+        {
+            Row row = new Row(AddInfoLabel(title), getValue);
+            Rows.Add(row);
+            return row;
+        }
+
+        void AddRowConditional(string title, string showPreferenceKey, Func<string> getValue)
+        {
+            if (!Main.PrefManager.Get<bool>(showPreferenceKey))
+                return;
+            AddRow(title, getValue);
+        }
+
+        protected virtual InfoLabelElement AddInfoLabel(string title)
+        {
+            InfoLabelElement infoLabelElement = New<InfoLabelElement>();
+            infoLabelElement.SetSize(DefaultElementSize.x, DefaultElementSize.y);
+            infoLabelElement.SetTitle(title);
+            infoLabelElement.SetStyle(Style);
+            infoLabelElement.SetAlignment(TMPro.TextAlignmentOptions.Right);
+            return infoLabelElement;
+        }
+
+        protected virtual InfoLabelElement AddInfoLabel(string title, string value)
+        {
+            return AddInfoLabel(title).SetValue(value);
+        }
+
+        protected virtual InfoLabelElement AddInfoLabel(string title, string value, Color color)
+        {
+            InfoLabelElement infoLabelElement = AddInfoLabel(title, value);
+            infoLabelElement.SetTextColor(color);
+            return infoLabelElement;
+        }
+
+        protected virtual TElement New<TElement>(bool add_to_module_list = true) where TElement : Element
+        {
+            TElement val = ModuleDirectory.Add<TElement>(Container);
+            if (add_to_module_list)
+            {
+                ModuleList.AddModule(val);
+            }
+            return val;
         }
     }
 }

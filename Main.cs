@@ -1,9 +1,14 @@
 ﻿using HarmonyLib;
 using Kitchen;
+using Kitchen.Modules;
+using KitchenInGameTimer.Modules;
+using KitchenInGameTimer.Utils;
 using KitchenMods;
 using PreferenceSystem;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 
 // Namespace should have "Kitchen" in the beginning
@@ -15,31 +20,24 @@ namespace KitchenInGameTimer
         public const string MOD_NAME = "In-Game Timer";
         public const string MOD_VERSION = "0.1.4";
 
-        public const string TIMER_ENABLED_ID = "Enabled";
-        public const string TIMER_MODE_ID = "TimerRunDuring";
-        public const string TIMER_RESET_MODE_ID = "AutomaticallyReset";
-        public const string TIMER_PAUSE_MODE_ID = "FreezeTimerWhenGamePaused";
-        public const string GROUPS_SERVED_ENABLED_ID = "GroupsServedEnabled";
-        public const string GROUPS_QUEUE_ENABLED_ID = "GroupsQueueEnabled";
-        public const string GROUPS_REMAINING_ENABLED_ID = "GroupsRemainingEnabled";
+        internal const string TIMER_ENABLED_ID = "Enabled";
+        internal const string TIMER_MODE_ID = "TimerRunDuring";
+        internal const string TIMER_RESET_MODE_ID = "AutomaticallyReset";
+        internal const string TIMER_PAUSE_MODE_ID = "FreezeTimerWhenGamePaused";
+        internal const string GROUPS_SERVED_ENABLED_ID = "GroupsServedEnabled";
+        internal const string GROUPS_QUEUE_ENABLED_ID = "GroupsQueueEnabled";
+        internal const string GROUPS_REMAINING_ENABLED_ID = "GroupsRemainingEnabled";
+
+        internal static readonly ViewType TIMER_VIEW_TYPE = (ViewType)HashUtils.GetID($"{MOD_GUID}:TimerViewType");
 
         internal static PreferenceSystemManager PrefManager { get; private set; }
         internal static bool RequestReset = false;
         internal bool IsHost => Session.CurrentGameNetworkMode == GameNetworkMode.Host;
 
-        Harmony harmony;
-        static List<Assembly> PatchedAssemblies = new List<Assembly>();
-
         public Main()
         {
-            if (harmony == null)
-                harmony = new Harmony(MOD_GUID);
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            if (assembly != null && !PatchedAssemblies.Contains(assembly))
-            {
-                harmony.PatchAll(assembly);
-                PatchedAssemblies.Add(assembly);
-            }
+            Harmony harmony = new Harmony(MOD_GUID);
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
 
         public void PostActivate(KitchenMods.Mod mod)
@@ -114,9 +112,57 @@ namespace KitchenInGameTimer
             PrefManager.RegisterMenu(PreferenceSystemManager.MenuType.PauseMenu);
         }
 
-        public void PreInject() { }
+        static readonly FieldInfo f_DefaultModule = typeof(ModuleDirectory).GetField("DefaultModule", BindingFlags.NonPublic | BindingFlags.Instance);
+        static readonly FieldInfo f_GenericAnimator = typeof(Element).GetField("GenericAnimator", BindingFlags.NonPublic | BindingFlags.Instance);
+        static readonly FieldInfo f_Label = typeof(LabelElement).GetField("Label", BindingFlags.NonPublic | BindingFlags.Instance);
+        static readonly FieldInfo f_LabelTransform = typeof(LabelElement).GetField("LabelTransform", BindingFlags.NonPublic | BindingFlags.Instance);
+        public void PreInject()
+        {
+        }
 
-        public void PostInject() { }
+        public void PostInject()
+        {
+            if (ModuleDirectory.Main)
+            {
+                Dictionary<Type, Element> defaultModule = (Dictionary<Type, Element>)f_DefaultModule.GetValue(ModuleDirectory.Main);
+                GameObject labelPrefab = ModuleDirectory.Main.GetPrefab<LabelElement>()?.gameObject;
+                if (defaultModule != null &&
+                    labelPrefab != null &&
+                    !defaultModule.ContainsKey(typeof(InfoLabelElement)))
+                {
+                    GameObject infoLabelElementPrefab = GameObject.Instantiate(labelPrefab);
+                    infoLabelElementPrefab.name = "InfoLabel";
+                    infoLabelElementPrefab.SetActive(false);
+
+                    LabelElement toDestroy = infoLabelElementPrefab.GetComponent<LabelElement>();
+                    if (toDestroy)
+                        Component.DestroyImmediate(toDestroy);
+
+                    InfoLabelElement infoLabelElement = infoLabelElementPrefab.AddComponent<InfoLabelElement>();
+                    defaultModule[typeof(InfoLabelElement)] = infoLabelElement;
+
+                    Animator genericAnimator = infoLabelElementPrefab.GetComponent<Animator>();
+                    if (genericAnimator)
+                        f_GenericAnimator?.SetValue(infoLabelElement, genericAnimator);
+
+                    TextMeshPro labelTMP = infoLabelElementPrefab.transform.Find("Title")?.GetComponent<TextMeshPro>();
+                    if (labelTMP)
+                    {
+                        labelTMP.color = Color.white;
+                        labelTMP.text = string.Empty;
+                        f_Label?.SetValue(infoLabelElement, labelTMP);
+                    }
+
+                    RectTransform rectTransform = infoLabelElementPrefab.transform.Find("Title")?.GetComponent<RectTransform>();
+                    if (rectTransform)
+                    {
+                        f_LabelTransform?.SetValue(infoLabelElement, rectTransform);
+                    }
+
+                    infoLabelElementPrefab.SetActive(true);
+                }
+            }
+        }
 
         #region Logging
         public static void LogInfo(string _log) { Debug.Log($"[{MOD_NAME}] " + _log); }
