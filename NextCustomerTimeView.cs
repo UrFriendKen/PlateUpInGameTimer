@@ -122,7 +122,7 @@ namespace KitchenInGameTimer
             float pos = Mathf.Lerp(-halfWidth, halfWidth, Mathf.Clamp01(fraction));
             Container.transform.localPosition = Vector3.right * pos;
 
-            Label?.SetLabel($"{timeRemaining.ToString($"F{(timeRemaining < 1f ? 1 : 0)}")}s");
+            Label?.SetLabel($"{timeRemaining.ToString($"F{(timeRemaining < 3f ? 1 : 0)}")}s");
         }
     }
 }
