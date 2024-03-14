@@ -1,5 +1,8 @@
 ﻿using HarmonyLib;
 using Kitchen;
+using Kitchen.Modules;
+using KitchenInGameTimer.Modules;
+using Shapes;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -52,6 +55,64 @@ namespace KitchenInGameTimer.Patches
                 return false;
             }
             return true;
+        }
+
+        [HarmonyPatch(typeof(LocalViewRouter), "GetPrefab")]
+        [HarmonyPostfix]
+        static void GetPrefab_Postfix(ViewType view_type, ref GameObject __result)
+        {
+            if (__result == null)
+                return;
+
+            if (view_type == ViewType.TimeDisplay)
+            {
+                if (!__result.GetComponent<NextCustomerTimeView>())
+                {
+                    LayerMask uiLayer = LayerMask.NameToLayer("UI");
+                    Transform timeGroup = __result.transform.Find("Time");
+
+                    GameObject anchor = new GameObject("Anchor");
+                    anchor.layer = uiLayer;
+                    anchor.transform.SetParent(timeGroup?.transform ?? __result.transform);
+                    anchor.transform.Reset();
+                    anchor.transform.localPosition = Vector3.forward * -0.055f;
+
+                    GameObject container = new GameObject("Next Customer");
+                    container.layer = uiLayer;
+                    container.transform.SetParent(anchor.transform);
+                    container.transform.Reset();
+
+                    GameObject bar = new GameObject("Next Arrival");
+                    bar.layer = uiLayer;
+                    bar.transform.SetParent(container.transform);
+                    bar.transform.Reset();
+                    Rectangle rect = bar.AddComponent<Rectangle>();
+                    rect.CornerRadius = 0.01f;
+                    rect.Width = 0.03f;
+                    rect.Height = 0.2f;
+                    rect.Color = new Color(0.51f, 0.7f, 1f, 1f) * Mathf.Pow(1.2f, 2f);
+
+                    InfoLabelElement label = null;
+                    InfoLabelElement labelPrefab = ModuleDirectory.Main.GetPrefab<InfoLabelElement>();
+                    if (labelPrefab)
+                    {
+                        label = Object.Instantiate(labelPrefab);
+                        label.name = "Time Remaining";
+                        label.gameObject.layer = uiLayer;
+                        label.transform.SetParent(container.transform);
+                        label.transform.localPosition = new Vector3(1.5f, 0.05f, 0f);
+                        label.SetSize(3f, 0.4f);
+                        label.SetStyle(ElementStyle.Default);
+                        label.SetAlignment(TextAlignmentOptions.MidlineLeft);
+                    }
+
+                    NextCustomerTimeView nextCustomerTimeView = __result.AddComponent<NextCustomerTimeView>();
+                    nextCustomerTimeView.Background = timeGroup?.Find("Grey")?.GetComponent<Rectangle>();
+                    nextCustomerTimeView.Container = container;
+                    nextCustomerTimeView.Label = label;
+                }
+                return;
+            }
         }
     }
 }

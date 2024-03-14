@@ -45,6 +45,7 @@ namespace KitchenInGameTimer
 
                 for (var i = 0; i < views.Length; i++)
                 {
+                    Main.LogInfo(scheduledGroups);
                     var view = views[i];
                     SendUpdate(view, new ViewData()
                     {
@@ -68,6 +69,7 @@ namespace KitchenInGameTimer
             public bool IsChangedFrom(ViewData check) =>
                 Duration.GetHashCode() != check.Duration.GetHashCode() ||
                 ScheduledGroups != check.ScheduledGroups ||
+                QueueGroups != check.QueueGroups ||
                 ServedGroups != check.ServedGroups;
         }
 
@@ -174,9 +176,9 @@ namespace KitchenInGameTimer
                     TimeSpan duration = Data.Duration;
                     return $"{Math.Floor(duration.TotalHours):00}:{duration.Minutes:00}:{duration.Seconds:00}";
                 });
-                AddRowConditional("Served", Main.GROUPS_SERVED_ENABLED_ID, Data.ServedGroups.ToString);
-                AddRowConditional("Queue", Main.GROUPS_QUEUE_ENABLED_ID, Data.QueueGroups.ToString);
-                AddRowConditional("To Spawn", Main.GROUPS_REMAINING_ENABLED_ID, Data.ScheduledGroups.ToString);
+                AddRowConditional("Served", Main.GROUPS_SERVED_ENABLED_ID, () => Data.ServedGroups.ToString());
+                AddRowConditional("Queue", Main.GROUPS_QUEUE_ENABLED_ID, () => Data.QueueGroups.ToString());
+                AddRowConditional("To Spawn", Main.GROUPS_REMAINING_ENABLED_ID, () => Data.ScheduledGroups.ToString());
             }
 
             foreach (Row row in Rows)
