@@ -35,7 +35,7 @@ namespace KitchenInGameTimer
                 {
                     data.HasNextGroup = true;
 
-                    float minArrivalTime = float.MaxValue;
+                    float minArrivalTime = 1.2f;
                     using NativeArray<CScheduledCustomer> scheduledCustomers = ScheduledGroups.ToComponentDataArray<CScheduledCustomer>(Allocator.Temp);
                     for (int i = 0; i < scheduledCustomers.Length; i++)
                     {
@@ -46,7 +46,10 @@ namespace KitchenInGameTimer
                     }
 
                     STime sTime = GetOrDefault<STime>();
-                    float remainingTime = (minArrivalTime - sTime.TimeOfDay) * sTime.DayLength;
+                    float remainingTime = (minArrivalTime - sTime.TimeOfDayUnbounded) * sTime.DayLength;
+
+                    if (remainingTime < 0f)
+                        remainingTime = 0f;
 
                     data.PercentDayArrivalTime = minArrivalTime;
                     data.TimeRemaining = remainingTime;

@@ -18,7 +18,7 @@ namespace KitchenInGameTimer
     {
         public const string MOD_GUID = "IcedMilo.PlateUp.InGameTimer";
         public const string MOD_NAME = "In-Game Timer";
-        public const string MOD_VERSION = "0.1.5";
+        public const string MOD_VERSION = "0.1.6";
 
         internal const string TIMER_ENABLED_ID = "Enabled";
         internal const string TIMER_MODE_ID = "TimerRunDuring";
@@ -107,6 +107,7 @@ namespace KitchenInGameTimer
                         new bool[] { false, true },
                         new string[] { "Disabled", "Enabled" })
                     .AddSpacer()
+                    .AddLabel("Show Next Group Arrival Indicator")
                     .AddOption<bool>(
                         GROUPS_SHOW_NEXT_ARRIVAL_ID,
                         true,
