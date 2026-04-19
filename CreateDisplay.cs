@@ -25,7 +25,7 @@ namespace KitchenInGameTimer
             });
             Set(singleton, new CPosition()
             {
-                Position = new Vector3(1f, 0.78f, 0f)
+                Position = new Vector3(1f, 0.72f, 0f)
             });
         }
     }

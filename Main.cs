@@ -18,7 +18,7 @@ namespace KitchenInGameTimer
     {
         public const string MOD_GUID = "IcedMilo.PlateUp.InGameTimer";
         public const string MOD_NAME = "In-Game Timer";
-        public const string MOD_VERSION = "0.1.6";
+        public const string MOD_VERSION = "0.1.7";
 
         internal const string TIMER_ENABLED_ID = "Enabled";
         internal const string TIMER_MODE_ID = "TimerRunDuring";
@@ -33,7 +33,8 @@ namespace KitchenInGameTimer
 
         internal static PreferenceSystemManager PrefManager { get; private set; }
         internal static bool RequestReset = false;
-        internal bool IsHost => Session.CurrentGameNetworkMode == GameNetworkMode.Host;
+        internal bool IsHost => Session.NetworkedPlayState == Platforms.NetworkedPlayState.Host ||
+            Session.NetworkedPlayState == Platforms.NetworkedPlayState.NotNetworked;
 
         public Main()
         {
